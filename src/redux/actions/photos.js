@@ -24,8 +24,13 @@ const updateFeed = (tokenId) => (dispatch, getState) => {
 const updateOwnerAddress = (tokenId, to) => (dispatch, getState) => {
   const { photos: { feed } } = getState()
   const newFeed = feed.map((photo) => {
-    if (photo[ID] !== tokenId) return photo
-    photo[OWNER_HISTORY].push(to)
+    if (photo['id'] !== tokenId) return photo
+
+    // not extensible 우회 처리
+    let ownerHistoryTmp = Object.assign([], photo['ownerHistory']);
+    ownerHistoryTmp.push(to);
+    photo['ownerHistory'] = ownerHistoryTmp;
+    
     return photo
   })
   dispatch(setFeed(newFeed))
@@ -67,24 +72,21 @@ export const uploadPhoto = (
       from: getWallet().address,
       gas: '200000000',
     })
-      .once('transactionHash', (txHash) => {
+      .then((result) => {
+        const status = result.status;
+        const txHash = result.transactionHash;
+        const blockNumber = result.blockNumber;
+
         ui.showToast({
-          status: 'pending',
-          message: `Sending a transaction... (uploadPhoto)`,
-          txHash,
-        })
-      })
-      .once('receipt', (receipt) => {
-        ui.showToast({
-          status: receipt.status ? 'success' : 'fail',
+          status: status ? 'success' : 'fail',
           message: `Received receipt! It means your transaction is
-          in klaytn block (#${receipt.blockNumber}) (uploadPhoto)`,
-          link: receipt.transactionHash,
-        })
-        const tokenId = receipt.events.PhotoUploaded.returnValues[0]
-        dispatch(updateFeed(tokenId))
+        in klaytn block (#${blockNumber}) (uploadPhoto)`,
+          link: txHash,
+        });
+        const tokenId = result.events.Transfer.returnValues[0];
+        dispatch(updateFeed(tokenId));
       })
-      .once('error', (error) => {
+      .catch((error) => {
         ui.showToast({
           status: 'error',
           message: error.toString(),
@@ -98,23 +100,20 @@ export const transferOwnership = (tokenId, to) => (dispatch) => {
     from: getWallet().address,
     gas: '20000000',
   })
-    .once('transactionHash', (txHash) => {
+    .then((result) => {
+      const status = result.status;
+      const txHash = result.transactionHash;
+      const blockNumber = result.blockNumber;
+
       ui.showToast({
-        status: 'pending',
-        message: `Sending a transaction... (transferOwnership)`,
-        txHash,
-      })
-    })
-    .once('receipt', (receipt) => {
-      ui.showToast({
-        status: receipt.status ? 'success' : 'fail',
+        status: status ? 'success' : 'fail',
         message: `Received receipt! It means your transaction is
-          in klaytn block (#${receipt.blockNumber}) (transferOwnership)`,
-        link: receipt.transactionHash,
-      })
-      dispatch(updateOwnerAddress(tokenId, to))
+        in klaytn block (#${blockNumber}) (transferOwnership)`,
+        link: txHash,
+      });
+      dispatch(updateOwnerAddress(tokenId, to));
     })
-    .once('error', (error) => {
+    .catch((error) => {
       ui.showToast({
         status: 'error',
         message: error.toString(),
