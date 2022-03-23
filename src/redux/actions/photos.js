@@ -83,7 +83,7 @@ export const uploadPhoto = (
         in klaytn block (#${blockNumber}) (uploadPhoto)`,
           link: txHash,
         });
-        const tokenId = result.events.Transfer.returnValues[0];
+        const tokenId = result.events.PhotoUploaded.returnValues[0];
         dispatch(updateFeed(tokenId));
       })
       .catch((error) => {
